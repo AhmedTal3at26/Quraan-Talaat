@@ -1,0 +1,20 @@
+# ملفات المصحف الأصلية (مجلد وصلة إلى القرص D:) — لا تُرفع
+assets/mushaf/
+
+# ملفات وسيطة للبناء
+tools/work/
+
+# مؤقتات
+*.tmp
+*.tmp.png
+*.log
+
+# نظام التشغيل
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# محرّرات
+.vscode/
+.idea/
+*.swp

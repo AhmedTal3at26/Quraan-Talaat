@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<title>مصحف الخطاط طلعت فتحي محمد</title>
+<meta name="description" content="المصحف الشريف بخط الخطاط طلعت فتحي محمد - رواية حفص عن عاصم">
+<meta name="theme-color" content="#1b1410">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+<div id="app" class="app">
+
+  <!-- ======= Top bar ======= -->
+  <header class="topbar" id="topbar">
+    <button class="icon-btn" id="btnMenu" aria-label="الفهرس">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    </button>
+
+    <div class="title-block">
+      <div class="title" id="pageTitle">الجزء الأول</div>
+      <div class="subtitle" id="pageSub">سورة الفاتحة</div>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btnSearch" aria-label="بحث">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      </button>
+      <button class="icon-btn" id="btnBookmark" aria-label="حفظ الموضع" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+      </button>
+      <button class="icon-btn" id="btnTheme" aria-label="الوضع الليلي">
+        <svg viewBox="0 0 24 24" class="ico-moon"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+        <svg viewBox="0 0 24 24" class="ico-sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+      </button>
+      <button class="icon-btn" id="btnSettings" aria-label="الإعدادات">
+        <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======= Reader ======= -->
+  <main class="stage" id="stage">
+    <div class="viewport" id="viewport">
+      <div class="spread" id="spread"></div>
+    </div>
+
+    <div class="loader" id="loader" hidden><div class="spinner"></div></div>
+
+    <div class="audiobar" id="audioBar" hidden>
+      <button class="icon-btn" id="btnPlayPause" aria-label="تشغيل أو إيقاف">
+        <svg viewBox="0 0 24 24" class="ico-play"><path d="M8 5l11 7-11 7z"/></svg>
+        <svg viewBox="0 0 24 24" class="ico-pause"><path d="M9 5v14M15 5v14"/></svg>
+      </button>
+      <div class="audio-info">
+        <div class="audio-title" id="audioTitle">&#8212;</div>
+        <div class="audio-sub" id="audioSub"></div>
+      </div>
+      <select id="setReciter" aria-label="القارئ"></select>
+      <button class="icon-btn" id="btnAudioClose" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <!-- page strip -->
+    <div class="strip" id="strip" hidden>
+      <div class="strip-track" id="stripTrack"></div>
+    </div>
+  </main>
+
+  <!-- ======= Bottom bar ======= -->
+  <footer class="bottombar" id="bottombar">
+    <button class="nav-btn" id="btnPrev" aria-label="الصفحة السابقة">
+      <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+
+    <button class="nav-btn" id="btnNext" aria-label="الصفحة التالية">
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+
+    <div class="pagebox">
+      <input type="number" id="pageInput" min="1" value="1" inputmode="numeric" aria-label="رقم الصفحة">
+      <span class="sep">/</span>
+      <span id="pageTotal">1</span>
+      <button class="linkish" id="btnPageJump">انتقال</button>
+    </div>
+
+    
+  </footer>
+
+  <!-- ======= Drawer: index ======= -->
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-tab="surah" role="tab">السور</button>
+        <button class="tab" data-tab="juz" role="tab">الأجزاء</button>
+        <button class="tab" data-tab="marks" role="tab">علاماتي</button>
+        <button class="tab" data-tab="about" role="tab">عن المصحف</button>
+      </div>
+      <button class="icon-btn" id="btnCloseDrawer" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <div class="tabpanel is-active" data-panel="surah">
+        <input type="search" id="surahFilter" class="filter" placeholder="ابحث عن سورة…" aria-label="تصفية السور">
+        <ol class="list" id="surahList"></ol>
+      </div>
+      <div class="tabpanel" data-panel="juz">
+        <ol class="list" id="juzList"></ol>
+      </div>
+      <div class="tabpanel" data-panel="marks">
+        <p class="hint">اضغط على أيقونة الحفظ أثناء القراءة لتضف العلامة.</p>
+        <ol class="list" id="marksList"></ol>
+      </div>
+      <div class="tabpanel" data-panel="about">
+        <div class="about">
+          <h2>مصحف الخطاط طلعت فتحي محمد</h2>
+          <p>خط المصحف الشريف بخطّ الخطاط <strong>طلعت فتحي محمد</strong>، رُاجع من لجنة المصحف الشريف بجمهورية مصر العربية، وجَهْز للتداول الورقي.</p>
+          <p>هذا الموقع يعرض صفحات المصحف كما هي في الأصل، مع فهرس قابل للبحث والتنقل.</p>
+          <dl class="specs">
+            <dt>عدد الأجزاء</dt><dd>20 جزءًا ورقيًا</dd>
+            <dt>عدد الصفحات</dt><dd id="aboutPages">—</dd>
+            <dt>الرواية</dt><dd>حفص عن عاصم</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- ======= Search overlay ======= -->
+  <section class="sheet" id="searchSheet" aria-hidden="true">
+    <div class="sheet-head">
+      <input type="search" id="searchInput" placeholder="ابحث في القرآن…" aria-label="البحث في القرآن">
+      <button class="icon-btn" id="btnCloseSearch" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="searchResults"></div>
+  </section>
+
+  <!-- ======= Settings sheet ======= -->
+  <section class="sheet" id="settingsSheet" aria-hidden="true">
+    <div class="sheet-head">
+      <h2>الإعدادات</h2>
+      <button class="icon-btn" id="btnCloseSettings" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <label class="row">
+        <span>نمط العرض</span>
+        <select id="setLayout">
+          <option value="single">صفحة واحدة</option>
+          <option value="spread">وجهان متجاوران</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>اتجاه الكتاب</span>
+        <select id="setDir">
+          <option value="rtl">من اليمين</option>
+          <option value="ltr">من اليسار</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>الهامش بين الصفحتين</span>
+        <input type="range" id="setGap" min="0" max="48" value="8">
+      </label>
+      <label class="row">
+        <span>السطوع</span>
+        <input type="range" id="setBright" min="40" max="110" value="100">
+      </label>
+      <label class="row">
+        <span>مصدر العرض</span>
+        <select id="setMode">
+          <option value="image">صور مُجهَّزة (سريع)</option>
+          <option value="pdf">رسم مباشر من PDF</option>
+        </select>
+      </label>
+      <label class="row">
+        <span>تنقّل بالأسهم</span>
+        <input type="checkbox" id="setKeys" checked>
+      </label>
+      <label class="row">
+        <span>الاستماع للآية (يتطلب إنترنت)</span>
+        <input type="checkbox" id="setAudio">
+      </label>
+      <div class="row row-btns">
+        <button class="btn" id="btnInstall" hidden>تثبيت التطبيق</button>
+        <button class="btn btn-ghost" id="btnReset">مسح مواضع القراءة</button>
+      </div>
+      <p class="hint">تُحفظ الإعدادات والمواضع على جهازك فقط.</p>
+    </div>
+  </section>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
