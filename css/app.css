@@ -123,10 +123,16 @@ button{font-family:inherit;color:inherit}
   border-radius:2px;
   overflow:hidden;
   flex:0 0 auto;
+  /* نمنع المتصفح من التقاط السحب على الصفحة نفسها */
+  touch-action:none;
+  -webkit-user-select:none;user-select:none;
 }
 .canvas-wrap canvas{display:block;width:100%;height:100%}
-.page-host{width:100%;height:100%;display:block;background:#fff}
-.page-host img{display:block;width:100%;height:100%;object-fit:contain}
+.page-host{width:100%;height:100%;display:block;background:#fff;touch-action:none}
+.page-host img,.page-host canvas{
+  display:block;width:100%;height:100%;object-fit:contain;
+  -webkit-user-drag:none;pointer-events:none;
+}
 .page-err{display:grid;place-items:center;height:100%;color:#b04a3a;font-size:13px}
 .loadmsg{margin-top:10px;font-size:12.5px;color:var(--fg-dim);text-align:center}
 .canvas-wrap.is-loading::after{

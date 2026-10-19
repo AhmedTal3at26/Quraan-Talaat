@@ -5,11 +5,14 @@ import { QuranData, toArabicDigits } from './data.js';
 import { PageSource } from './pagesource.js';
 
 /* ------------------------------------------------------------------ state */
+const BUILD = 'qt-v6';
 const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings', swiped:'qt.swiped' };
 const defaults = {
   // على الشاشات الصغيرة نبدأ بصفحة واحدة لأنها أعرض وأسهل قراءة
   layout: (window.matchMedia('(max-width: 700px)').matches) ? 'single' : 'spread',
   dir:'rtl', gap:10, bright:100,
+  // اتجاه السحب: 'left' = السحب لليسار ينقل للتالي (المتعارف عليه عربيًا)
+  swipe:'left',
   mode:'image', keys:true, theme:'dark', audio:true,
   reciter:'Husary_128kbps'
 };
@@ -210,6 +213,7 @@ async function boot(){
 
   el.pageTotal.textContent = toArabicDigits(S.pages.length);
   $('aboutPages').textContent = toArabicDigits(S.pages.length);
+  $('aboutBuild').textContent = BUILD;
 
   initAudio();
   buildSurahList(); buildJuzList(); buildMarks(); bindEvents(); syncSettingsUI();
@@ -358,9 +362,12 @@ function endPointer(e){
     if (dist < 6 && dt < 450 && S.zoom <= 1.05){
       onPageTap(e);                                   // نقرة على زخرفة آية
     } else if (S.zoom <= 1.05 && dist > 42 && Math.abs(dx) > Math.abs(dy) * 1.4){
-      // سحب أفقي — في القارئات العربية: السحب لليسار = الصفحة التالية
+      // السحب لليسار = التالي (المتعارف عليه في القارئات العربية)،
+      // ويمكن عكسه من الإعدادات ← اتجاه السحب
+      const leftIsNext = (S.cfg.swipe || 'left') === 'left';
+      const forward = leftIsNext ? (dx < 0) : (dx > 0);
       hideSwipeHint();
-      goTo(dx < 0 ? S.cur + 1 : S.cur - 1);
+      goTo(forward ? S.cur + 1 : S.cur - 1);
     }
   }
   pointers.delete(e.pointerId);
@@ -633,7 +640,13 @@ function bindEvents(){
   $('setLayout').addEventListener('change', e=>{ S.cfg.layout=e.target.value; saveLS(LS.cfg,S.cfg); layout(true); });
   $('setDir').addEventListener('change', e=>{
     S.cfg.dir=e.target.value; saveLS(LS.cfg,S.cfg);
-    updateSwipeHint(); layout(true);
+    layout(true);
+  });
+  $('setSwipe').addEventListener('change', e=>{
+    S.cfg.swipe=e.target.value; saveLS(LS.cfg,S.cfg);
+    // أعد عرض التلميح ليتأكد المستخدم من الاتجاه الجديد
+    localStorage.removeItem(LS.swiped);
+    updateSwipeHint();
   });
   $('setGap').addEventListener('input', e=>{ S.cfg.gap=+e.target.value; saveLS(LS.cfg,S.cfg); layout(true); });
   $('setBright').addEventListener('input', e=>{
@@ -685,7 +698,8 @@ function jumpToInput(){
 }
 function updateSwipeHint(){
   const el2 = $('swipeHint'); if (!el2) return;
-  el2.textContent = 'اسحب لليسار: التالي';
+  const leftIsNext = (S.cfg.swipe || 'left') === 'left';
+  el2.textContent = leftIsNext ? 'اسحب لليسار: التالي' : 'اسحب لليمين: التالي';
   // يظهر مرة واحدة فقط، ويختفي بعد أول سحب حقيقي
   if (loadLS(LS.swiped, false)) el2.hidden = true;
 }
@@ -696,6 +710,7 @@ function hideSwipeHint(){
 function syncSettingsUI(){
   $('setLayout').value = S.cfg.layout;
   $('setDir').value = S.cfg.dir;
+  const sw = $('setSwipe'); if (sw) sw.value = S.cfg.swipe || 'left';
   $('setGap').value = S.cfg.gap;
   $('setBright').value = S.cfg.bright;
   $('setMode').value = S.cfg.mode;
