@@ -1,6 +1,6 @@
 /* Service worker: يخزّن ملفات التطبيق وصفحات المصحف مؤقتًا. */
 
-const VERSION = 'qt-v4';
+const VERSION = 'qt-v5';
 const SHELL = [
   './',
   './index.html',

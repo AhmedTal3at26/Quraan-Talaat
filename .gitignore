@@ -4,6 +4,9 @@ assets/mushaf/
 # ملفات وسيطة للبناء
 tools/work/
 
+# أداة اختبار الجوال (اختبار محلي فقط)
+tools/mobile-test.html
+
 # مؤقتات
 *.tmp
 *.tmp.png

@@ -41,7 +41,7 @@
    بينما display في CSS يتغلّب عليها. نثبّتها هنا لكل العناصر. */
 [hidden]{display:none !important}
 
-html,body{height:100%}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 body{
   margin:0;
   background:var(--bg);
@@ -53,15 +53,26 @@ body{
 button{font-family:inherit;color:inherit}
 
 .app{
-  position:fixed;inset:0;
-  display:grid;
-  grid-template-rows:auto 1fr auto;
+  /* dvh مهمّ على الجوال: يتقلّص مع شريط العنوان في المتصفح
+     فيبقى شريط التحكم السفلي ظاهرًا دائمًا بلا حاجة تدوير الشاشة */
+  position:fixed;top:0;left:0;
+  width:100vw;max-width:100%;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding-bottom:env(safe-area-inset-bottom);
   background:
     radial-gradient(120% 80% at 50% -10%, #3a2a1d 0%, var(--bg) 55%, var(--bg-2) 100%);
+}
+/* بديل للمتصفحات التي لا تدعم dvh */
+@supports not (height: 100dvh){
+  .app{height:100%}
 }
 
 /* ---------- top bar ---------- */
 .topbar{
+  flex:0 0 auto;
   height:calc(var(--topbar-h) + env(safe-area-inset-top));
   padding:env(safe-area-inset-top) 8px 0;
   display:flex;align-items:center;gap:6px;
@@ -93,7 +104,7 @@ button{font-family:inherit;color:inherit}
 [data-theme="dark"] .ico-moon{display:none}
 
 /* ---------- stage ---------- */
-.stage{position:relative;overflow:hidden}
+.stage{flex:1 1 auto;min-height:0;position:relative;overflow:hidden}
 .viewport{
   position:absolute;inset:0;
   display:grid;place-items:center;
@@ -150,8 +161,9 @@ button{font-family:inherit;color:inherit}
 
 /* ---------- bottom bar ---------- */
 .bottombar{
-  height:calc(var(--bottombar-h) + env(safe-area-inset-bottom));
-  padding:0 10px env(safe-area-inset-bottom);
+  flex:0 0 auto;
+  height:var(--bottombar-h);
+  padding:0 10px;
   display:flex;align-items:center;gap:10px;
   background:linear-gradient(0deg,rgba(0,0,0,.5),rgba(0,0,0,.12));
   border-top:1px solid var(--line);
@@ -334,7 +346,7 @@ mark{background:rgba(216,162,74,.32);color:inherit;border-radius:3px;padding:0 1
   .pagebox input{font-size:13px;padding:6px 4px}
   .linkish{font-size:12px;padding:2px}
   .nav-btn{width:46px;height:46px;flex:0 0 46px}
-  .bottombar{gap:6px;padding:0 6px env(safe-area-inset-bottom)}
+  .bottombar{gap:6px;padding:0 6px}
   .strip{height:52px}
   .strip-track{inset:4px 4px}
   .thumb{height:42px}

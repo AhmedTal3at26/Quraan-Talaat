@@ -5,7 +5,7 @@ import { QuranData, toArabicDigits } from './data.js';
 import { PageSource } from './pagesource.js';
 
 /* ------------------------------------------------------------------ state */
-const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings' };
+const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings', swiped:'qt.swiped' };
 const defaults = {
   // على الشاشات الصغيرة نبدأ بصفحة واحدة لأنها أعرض وأسهل قراءة
   layout: (window.matchMedia('(max-width: 700px)').matches) ? 'single' : 'spread',
@@ -108,7 +108,7 @@ function initAudio(){
     if (!A.el.src) return;
     if (A.el.paused) A.el.play().catch(()=>{}); else A.el.pause();
   });
-  $('btnAudioClose').addEventListener('click', ()=>{ A.el.pause(); A.queue = []; A.continuePages = false; $('btnContinue').setAttribute('aria-pressed','false'); el.audioBar.hidden = true; });
+  $('btnAudioClose').addEventListener('click', ()=>{ A.el.pause(); A.queue = []; A.continuePages = false; $('btnContinue').setAttribute('aria-pressed','false'); showAudioBar(false); });
   $('btnContinue').addEventListener('click', ()=>{
     A.continuePages = !A.continuePages;
     $('btnContinue').setAttribute('aria-pressed', A.continuePages ? 'true':'false');
@@ -119,6 +119,12 @@ function setPlayIcon(playing){
   $('btnPlayPause').classList.toggle('is-playing', playing);
   $('btnAudio').classList.toggle('is-playing', playing);
 }
+/** إظهار/إخفاء شريط التلاوة، ويُخفي شريط المصغّرات معه حتى لا يتداخلان */
+function showAudioBar(on){
+  el.audioBar.hidden = !on;
+  el.strip.hidden = on;                 // شريط المصغّرات يختفي مع التلاوة ولا يتداخلان
+}
+
 function playAyah(s, a, offset, queue){
   const n = (x, w) => String(x).padStart(w, '0');
   A.queue = queue || [];
@@ -127,7 +133,7 @@ function playAyah(s, a, offset, queue){
   A.cur = { s, a, offset };
   el.audioTitle.textContent = S.data.verse(s, a).replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g,'');
   el.audioSub.textContent = `سورة ${S.data.surahName(s)} · الآية ${toArabicDigits(a)}`;
-  el.audioBar.hidden = false;
+  showAudioBar(true);
   if (offset != null){
     const loc = S.data.locate(s, a);
     // نضيء الآية على الشاشة الحالية فقط، دون تغيير الصفحة أثناء التلاوة
@@ -253,20 +259,26 @@ function makeHold(){
 }
 
 async function layout(force){
+  // قد تتداخل نداءات layout عند التنقّل السريع؛ نُبطل النداء الأقدم
+  const token = ++layoutToken;
   S.fit = fitScale();
   S.scale = S.fit * S.zoom;
   const idxs = spreadIndices();
   el.spread.style.setProperty('--gap', S.cfg.gap + 'px');
 
   for (const [i, h] of [...S.holds]){
-    if (!idxs.includes(i)){ h.wrap.remove(); S.holds.delete(i); }
+    if (!idxs.includes(i)){ h?.wrap?.remove(); S.holds.delete(i); }
   }
   for (const i of idxs) if (!S.holds.has(i)) S.holds.set(i, makeHold());
   applyTransform();
 
   for (const i of idxs) await renderHold(i, force);
+  if (token !== layoutToken) return;          // وصل نداء أحدث أثناء الرسم
   // الترتيب الطبيعي: الصفحة الأولى تقع على اليمين في اتجاه RTL
-  for (const i of idxs) el.spread.appendChild(S.holds.get(i).wrap);
+  for (const i of idxs){
+    const h = S.holds.get(i);
+    if (h) el.spread.appendChild(h.wrap);
+  }
   updateMeta();
 }
 
@@ -296,6 +308,7 @@ async function renderHold(i, force){
 function applyTransform(){ el.spread.style.transform = `translate(${S.tx}px, ${S.ty}px)`; }
 
 let rafPending = false;
+let layoutToken = 0;
 function scheduleRerender(){
   if (rafPending) return;
   rafPending = true;
@@ -308,13 +321,14 @@ function scheduleRerender(){
 
 /* ============================================================ ZOOM / PAN */
 const pointers = new Map();
-let pinchStart = null, downPos = null;
+let pinchStart = null, downPos = null, wasPinch = false;
 
 el.viewport.addEventListener('pointerdown', e=>{
   try{ el.viewport.setPointerCapture(e.pointerId); }catch{}
   pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
   downPos = { x:e.clientX, y:e.clientY, t:Date.now() };
   if (pointers.size === 2){
+    wasPinch = true;
     const [a,b] = [...pointers.values()];
     pinchStart = { d:Math.hypot(a.x-b.x, a.y-b.y), zoom:S.zoom };
   }
@@ -337,15 +351,21 @@ el.viewport.addEventListener('pointermove', e=>{
   }
 });
 function endPointer(e){
-  if (downPos && pointers.size === 1){
+  if (downPos && pointers.size === 1 && !wasPinch){
     const dx = e.clientX - downPos.x, dy = e.clientY - downPos.y;
-    if (Date.now() - downPos.t < 400 && Math.hypot(dx,dy) < 6 && S.zoom <= 1.05){
-      onPageTap(e);
+    const dt = Date.now() - downPos.t;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 6 && dt < 450 && S.zoom <= 1.05){
+      onPageTap(e);                                   // نقرة على زخرفة آية
+    } else if (S.zoom <= 1.05 && dist > 42 && Math.abs(dx) > Math.abs(dy) * 1.4){
+      // سحب أفقي — في القارئات العربية: السحب لليسار = الصفحة التالية
+      hideSwipeHint();
+      goTo(dx < 0 ? S.cur + 1 : S.cur - 1);
     }
   }
   pointers.delete(e.pointerId);
   if (pointers.size < 2) pinchStart = null;
-  if (!pointers.size) downPos = null;
+  if (!pointers.size){ downPos = null; wasPinch = false; }
 }
 el.viewport.addEventListener('pointerup', endPointer);
 el.viewport.addEventListener('pointercancel', e=>{ pointers.delete(e.pointerId); downPos = null; });
@@ -409,20 +429,8 @@ function clampPan(){
 }
 el.viewport.addEventListener('dblclick', e=> setZoom(S.zoom > 1.3 ? 1 : 2.2, e.clientX, e.clientY));
 
-let touchStart = null;
-el.viewport.addEventListener('touchstart', e=>{
-  if (e.touches.length === 1) touchStart = { x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now() };
-}, { passive:true });
-el.viewport.addEventListener('touchend', e=>{
-  if (!touchStart || S.zoom > 1.05){ touchStart = null; return; }
-  const t = e.changedTouches[0];
-  const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
-  if (Date.now() - touchStart.t < 700 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy)*1.6){
-    const forward = S.cfg.dir === 'rtl' ? dx < 0 : dx > 0;
-    forward ? goTo(S.cur+1) : goTo(S.cur-1);
-  }
-  touchStart = null;
-}, { passive:true });
+/* السحب والنقر والتكبير كلها تمرّ عبر أحداث pointer الموحّدة
+   (بما فيها اللمس على الجوال)، فلا حاجة لأحداث touch منفصلة. */
 
 /* ================================================================ NAVIGATION */
 async function goTo(i, opts = {}){
@@ -431,7 +439,7 @@ async function goTo(i, opts = {}){
   S.zoom = 1; S.tx = 0; S.ty = 0;
   await layout(!!opts.force);
   saveLS(LS.pos, { i, v:S.pages[i].v, p:S.pages[i].p, t:Date.now() });
-  if (!opts.silent) el.strip.hidden = false;
+  if (!opts.silent && el.audioBar.hidden) el.strip.hidden = false;
 }
 
 function updateMeta(){
@@ -646,8 +654,8 @@ function bindEvents(){
   });
   $('btnAudio').hidden = !S.cfg.audio;
   $('btnReset').addEventListener('click', ()=>{
-    localStorage.removeItem(LS.pos); localStorage.removeItem(LS.marks);
-    S.marks = []; buildMarks(); updateBookmarkBtn();
+    localStorage.removeItem(LS.pos); localStorage.removeItem(LS.marks); localStorage.removeItem(LS.swiped);
+    S.marks = []; buildMarks(); updateBookmarkBtn(); updateSwipeHint();
   });
 
   document.addEventListener('keydown', e=>{
@@ -677,7 +685,13 @@ function jumpToInput(){
 }
 function updateSwipeHint(){
   const el2 = $('swipeHint'); if (!el2) return;
-  el2.textContent = S.cfg.dir === 'rtl' ? 'اسحب يمينًا للتالي' : 'اسحب يسارًا للتالي';
+  el2.textContent = 'اسحب لليسار: التالي';
+  // يظهر مرة واحدة فقط، ويختفي بعد أول سحب حقيقي
+  if (loadLS(LS.swiped, false)) el2.hidden = true;
+}
+function hideSwipeHint(){
+  const el2 = $('swipeHint'); if (el2) el2.hidden = true;
+  saveLS(LS.swiped, true);
 }
 function syncSettingsUI(){
   $('setLayout').value = S.cfg.layout;
