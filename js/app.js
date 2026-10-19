@@ -53,10 +53,13 @@ function closeDrawer(){ el.drawer.classList.remove('is-open'); el.drawer.setAttr
 const esc = t => String(t).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
 /* ================================================================== AUDIO */
-const A = { el:null, cur:null, playing:false, queue:[], continuePages:true };
+const A = { el:null, cur:null, playing:false, queue:[], continuePages:true, autoRun:false };
 function initAudio(){
   A.el = new Audio();
   A.el.preload = 'none';
+  // للاختبار والتشخيص
+  window.__audio = A.el;
+  window.__nextInQueue = () => nextInQueue();
   A.el.addEventListener('ended', ()=> nextInQueue());
   A.el.addEventListener('error', ()=>{
     const t = A.el.error?.message || 'تعذّر تشغيل الصوت';
@@ -125,22 +128,29 @@ function playAyah(s, a, offset, queue){
   el.audioBar.hidden = false;
   if (offset != null){
     const loc = S.data.locate(s, a);
-    if (loc) flashAyah(loc.page, loc.offset);
+    // نضيء الآية على الشاشة الحالية فقط، دون تغيير الصفحة أثناء التلاوة
+    if (loc && loc.idx === S.cur) flashAyah(loc.page, loc.offset);
   }
 }
 
 /** تشغيل الآية التالية في قائمة الانتظار، ثم ينتقل للصفحة التالية تلقائيًا */
 function nextInQueue(){
   const nxt = A.queue.shift();
-  if (nxt){ playAyah(nxt.s, nxt.a, nxt.offset); return; }
-  if (!A.continuePages) { setPlayIcon(false); return; }
+  if (nxt){ playAyah(nxt.s, nxt.a, nxt.offset, A.queue); return; }
+  if (!A.continuePages || !A.autoRun){ setPlayIcon(false); return; }
   const next = S.cur + 1;
   if (next >= S.pages.length){ setPlayIcon(false); return; }
   goTo(next, { silent:true }).then(()=>{
     const pg = S.pages[next];
-    if (!pg) { setPlayIcon(false); return; }
-    const sa = S.data.fromGlobal(pg.g);
-    playAyah(sa.s, sa.a, pg.meds?.length ? 0 : null, []);
+    if (!pg){ setPlayIcon(false); return; }
+    // ابنِ طابور هذه الصفحة أيضًا، ثم شغّل أولها
+    const q = [];
+    for (let k = 1; k < pg.n; k++){
+      const sa = S.data.fromGlobal(pg.g + k);
+      q.push({ s: sa.s, a: sa.a, offset: pg.meds?.length ? k : null });
+    }
+    const sa0 = S.data.fromGlobal(pg.g);
+    playAyah(sa0.s, sa0.a, pg.meds?.length ? 0 : null, q);
   });
 }
 
@@ -154,12 +164,14 @@ function playPageAudio(){
     queue.push({ s: sa.s, a: sa.a, offset: pg.meds?.length ? k : null });
   }
   if (!queue.length) return;
+  A.autoRun = true;
   const first = queue.shift();
   playAyah(first.s, first.a, first.offset, queue);
 }
 
 /** تشغيل آية واحدة فقط (نقر على زخرفة) — بلا متابعة تلقائية */
 function playSingle(s, a, offset){
+  A.autoRun = false;
   playAyah(s, a, offset, []);
 }
 
@@ -347,7 +359,7 @@ function onPageTap(e){
   const k = nearestMedallion(pg, nx, ny);
   if (k < 0) return;
   const sa = S.data.fromGlobal(pg.g + k);
-  playAyah(sa.s, sa.a, null);
+  playSingle(sa.s, sa.a, k);
 }
 
 el.viewport.addEventListener('wheel', e=>{
