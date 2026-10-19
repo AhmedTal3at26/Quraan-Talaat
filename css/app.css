@@ -26,6 +26,11 @@
 }
 
 *{box-sizing:border-box}
+
+/* سمة hidden في HTML ليست إلا أسلوبًا منخفض الأولوية،
+   بينما display في CSS يتغلّب عليها. نثبّتها هنا لكل العناصر. */
+[hidden]{display:none !important}
+
 html,body{height:100%}
 body{
   margin:0;
