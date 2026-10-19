@@ -5,7 +5,7 @@ import { QuranData, toArabicDigits } from './data.js';
 import { PageSource } from './pagesource.js';
 
 /* ------------------------------------------------------------------ state */
-const BUILD = 'qt-v7';
+const BUILD = 'qt-v8';
 const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings',
              swiped:'qt.swiped', swipeFixed:'qt.swipeFixed' };
 const defaults = {
