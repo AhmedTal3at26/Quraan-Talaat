@@ -13,6 +13,13 @@ ROOT = os.path.abspath(os.path.join(HERE, ".."))
 WORK = os.path.join(ROOT, "tools", "work")
 DATA = os.path.join(ROOT, "data")
 
+def include(v, p):
+    """صفحات نصّ المصحف: 1:6+ ، 20:1 فقط"""
+    if v == 1: return p >= 6
+    if v == 20: return p == 1
+    return True
+
+
 # نافذة الكشف الضيقة (الذروة عند عرض ٢٢٫٧٥ وارتفاع ٢٧٫٢٥)
 W_LO, W_HI = 21.0, 25.0
 H_LO, H_HI = 25.0, 29.5
@@ -23,7 +30,7 @@ def load_pages():
     rows = pickle.load(open(os.path.join(WORK, "meds_all.pkl"), "rb"))
     out = []
     for r in rows:
-        if r["v"] == 20 or (r["v"] == 1 and r["p"] < 6):
+        if not include(r["v"], r["p"]):
             continue
         meds = [m for m in r["meds"] if W_LO <= m[2] <= W_HI and H_LO <= m[3] <= H_HI
                 and F_LO <= m[4] <= F_HI]

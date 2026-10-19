@@ -57,7 +57,9 @@ def main():
     jobs = []
     idx = 0
     for r in rows:
-        if r["v"] == 20 or (r["v"] == 1 and r["p"] < 6):
+        if not (r["v"] == 1 and r["p"] < 6) and not (r["v"] == 20 and r["p"] > 1):
+            pass
+        else:
             continue
         pdf = os.path.join(MUSH, "m %02d Qraan nos .pdf" % r["v"])
         jobs.append((idx, pdf, r["p"] - 1, args.scale, "page"))

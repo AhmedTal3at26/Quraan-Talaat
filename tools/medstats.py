@@ -1,19 +1,36 @@
 """
-medstats.py — يجمع إحصاءات زخارف الآيات (العرض/الارتفاع/الكثافة) لكل الصفحات
-              لاختيار أدق عتبة للكشف، ثم يعيد الكشف ويطبع الإجمالي.
+medstats.py — يستخرج زخارف أرقام الآيات من كل صفحة ويحفظها في work/meds_all.pkl
 
-    python tools/medstats.py --tight
+كل سجل:  { v: رقم المجلد, p: رقم الصفحة داخل المجلد, meds: [(x,y,w,h,fill), ...] }
+
+الصفحات المشمولة:
+  - المجلد 1 من الصفحة 6 فما بعد (قبلها مقدّمة)
+  - المجلد 20 الصفحة 1 فقط (وهي الصفحة الأخيرة ٦٠٤ من المصحف)
+  - باقي صفحات المجلد 20 مقدّمة وفهرس (تُستبعد)
+
+    python tools/medstats.py
 """
-import argparse, glob, json, os, pickle, time
+import argparse, glob, json, os, pickle, sys, time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import numpy as np, pymupdf
 from scipy import ndimage
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WORK = os.path.join(HERE, "work")
+ROOT = os.path.abspath(os.path.join(HERE, ".."))
+WORK = os.path.join(ROOT, "tools", "work")
 SRC = r"D:\My Projects\Religion\Dad's Quraan"
+
 DET_Z = 4
 PAGE_W, PAGE_H = 488.976, 701.575
+
+
+def include(v, p):
+    """هل الصفحة p (1-based) من المجلد v جزء من نصّ المصحف؟"""
+    if v == 1:
+        return p >= 6
+    if v == 20:
+        return p == 1
+    return True
 
 
 def page_rgb(p, zoom=DET_Z):
@@ -46,63 +63,85 @@ def all_hits(arr):
 
 def work(job):
     path, vol = job
-    for _ in range(3):
-        try:
-            doc = pymupdf.open(path)
-            res = []
-            for pno in range(doc.page_count):
-                if vol == 20:
-                    res.append([]); continue
-                if vol == 1 and pno < 5:
-                    res.append([]); continue
+    doc = pymupdf.open(path)
+    res = []
+    for pno in range(doc.page_count):
+        p1 = pno + 1
+        if not include(vol, p1):
+            res.append(dict(v=vol, p=p1, meds=[]))
+            continue
+        for attempt in range(3):
+            try:
                 a = page_rgb(doc[pno])
                 h = all_hits(a)
                 del a
-                res.append(h)
-            doc.close()
-            return vol, res
-        except MemoryError:
-            time.sleep(2)
-    return vol, []
+                break
+            except MemoryError:
+                time.sleep(2)
+        else:
+            h = []
+        res.append(dict(v=vol, p=p1, meds=h))
+    doc.close()
+    return vol, res
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    args = ap.parse_args()
-    files = sorted(glob.glob(os.path.join(SRC, "*.pdf")))
-    out = {}
+    os.makedirs(WORK, exist_ok=True)
+    # ملفات المصحف هي الـ 20 Kronzen المرقّمة فقط، ونستبعد أي كتاب آخر بالمجلد
+    def vnum(path):
+        import re
+        m = re.search(r"m\s+(\d+)\s+Qraan", os.path.basename(path))
+        return int(m.group(1)) if m else None
+
+    found = {}
+    for f in glob.glob(os.path.join(SRC, "*.pdf")):
+        n = vnum(f)
+        if n is not None:
+            found[n] = f
+    jobs = [(found[n], n) for n in sorted(found)]
+    if not jobs:
+        sys.exit(f"no mushaf PDFs in {SRC}")
+    print(f"mushaf volumes: {len(jobs)}")
+    if len(jobs) != 20:
+        print(f"WARNING: expected 20 volumes, found {sorted(found)}")
+    results = {}
+    t0 = time.time()
     with ProcessPoolExecutor(max_workers=4) as ex:
-        futs = {ex.submit(work, (f, i + 1)): i + 1 for i, f in enumerate(files)}
+        futs = {ex.submit(work, j): j for j in jobs}
         for fu in as_completed(futs):
-            v, res = fu.result(); out[v] = res
+            job, (vol, res) = futs[fu], fu.result()
+            if vol in results:
+                raise SystemExit(f"duplicate volume {vol}")
+            npages = len(pymupdf.open(job[0]))
+            if len(res) != npages:
+                raise SystemExit(f"volume {vol}: expected {npages} pages, got {len(res)}")
+            results[vol] = res
+            print(f"  volume {vol:2d} done ({time.time()-t0:.0f}s)", flush=True)
+
+    missing = [v for _, v in jobs if v not in results]
+    if missing:
+        raise SystemExit(f"missing volumes: {missing}")
+
     pages = []
-    for v in sorted(out):
-        for i, h in enumerate(out[v]):
-            pages.append(dict(v=v, p=i + 1, meds=h))
+    for v in sorted(results):
+        pages.extend(results[v])
+    expected = sum(1 for r in pages if any(m["meds"] or True for m in [r]) and include(r["v"], r["p"]))
+    print(f"total records: {len(pages)}  included: {expected}")
     pickle.dump(pages, open(os.path.join(WORK, "meds_all.pkl"), "wb"))
 
-    W = np.array([m[2] for pg in pages for m in pg["meds"]])
-    H = np.array([m[3] for pg in pages for m in pg["meds"]])
-    F = np.array([m[4] for pg in pages for m in pg["meds"]])
+    text = [r for r in pages if include(r["v"], r["p"])]
+    W = np.array([m[2] for pg in text for m in pg["meds"]])
+    H = np.array([m[3] for pg in text for m in pg["meds"]])
+    F = np.array([m[4] for pg in text for m in pg["meds"]])
     print("candidates:", len(W))
     for name, arr in (("w", W), ("h", H), ("fill", F)):
-        print("  %-5s min %.3f p1 %.3f p5 %.3f p25 %.3f med %.3f p95 %.3f max %.3f" %
-              (name, arr.min(), np.percentile(arr,1), np.percentile(arr,5), np.percentile(arr,25),
-               np.median(arr), np.percentile(arr,95), arr.max()))
-    # histogram of w
-    h, e = np.histogram(W, bins=24, range=(18, 28))
-    print("  w hist:", " ".join("%.1f:%d" % (e[k], h[k]) for k in range(24)))
-    h, e = np.histogram(H, bins=24, range=(22, 32))
-    print("  h hist:", " ".join("%.1f:%d" % (e[k], h[k]) for k in range(24)))
-
-    # tight filter sweep
+        print("  %-5s p5 %.3f med %.3f p95 %.3f" %
+              (name, np.percentile(arr, 5), np.median(arr), np.percentile(arr, 95)))
     for wlo, whi, hlo, hhi, flo, fhi in [
         (21.0, 25.0, 25.0, 29.5, 0.24, 0.34),
-        (21.5, 24.5, 25.5, 29.0, 0.25, 0.33),
-        (22.0, 24.0, 26.0, 28.5, 0.26, 0.32),
         (21.0, 25.0, 25.0, 29.5, 0.22, 0.36),
     ]:
-        tot = sum(1 for pg in pages for m in pg["meds"]
+        tot = sum(1 for pg in text for m in pg["meds"]
                   if wlo <= m[2] <= whi and hlo <= m[3] <= hhi and flo <= m[4] <= fhi)
         print("  w[%.1f,%.1f] h[%.1f,%.1f] f[%.2f,%.2f] -> %d" % (wlo, whi, hlo, hhi, flo, fhi, tot))
 

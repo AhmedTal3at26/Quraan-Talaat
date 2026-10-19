@@ -9,11 +9,10 @@ const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings' };
 const defaults = {
   layout:'single', dir:'rtl', gap:10, bright:100,
   mode:'image', keys:true, theme:'dark',
-  reciter:'Alafasy_128kbps'
+  reciter:'Husary_128kbps'
 };
 
 const RECITERS = [
-  ['Alafasy_128kbps', 'مشاري العفاسي'],
   ['Husary_128kbps', 'محمود خليل الحصري'],
   ['Minshawy_Murattal_192kbps', 'محمد صديق المنشاوي (مرتّل)'],
   ['Abdul_Basit_Murattal_192kbps', 'عبد الباسط عبد الصمد (مرتّل)'],
@@ -68,6 +67,11 @@ function initAudio(){
     o.value = id; o.textContent = name;
     return o;
   }));
+  // حماية: تجاهل اختيار قديم لم يعد في القائمة
+  if (!RECITERS.some(([id]) => id === S.cfg.reciter)){
+    S.cfg.reciter = defaults.reciter;
+    saveLS(LS.cfg, S.cfg);
+  }
   sel.value = S.cfg.reciter;
   sel.addEventListener('change', ()=>{
     S.cfg.reciter = sel.value; saveLS(LS.cfg, S.cfg);
