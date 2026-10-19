@@ -1,5 +1,6 @@
-/* Service worker: caches the app shell + data, and caches mushaf PDFs on demand. */
-const VERSION = 'qt-v3';
+/* Service worker: يخزّن ملفات التطبيق وصفحات المصحف مؤقتًا. */
+
+const VERSION = 'qt-v4';
 const SHELL = [
   './',
   './index.html',
@@ -21,7 +22,8 @@ self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(VERSION);
     await c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })));
-    self.skipWaiting();
+    // سيطر فورًا على الصفحة المفتوحة حتى لا تخدم نسخة قديمة
+    await self.skipWaiting();
   })());
 });
 
@@ -56,14 +58,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // stale-while-revalidate for the shell
+  // ملفات التطبيق: الشبكة أولًا (تحديث فوري) مع الذاكرة كبديل عند انقطاع الشبكة
   e.respondWith((async () => {
     const c = await caches.open(VERSION);
-    const hit = await c.match(req);
-    const net = fetch(req).then(res => {
+    try {
+      const res = await fetch(req, { cache: 'no-cache' });
       if (res.ok) c.put(req, res.clone());
       return res;
-    }).catch(() => hit);
-    return hit || net;
+    } catch {
+      const hit = await c.match(req);
+      if (hit) return hit;
+      throw new Error('offline and not cached');
+    }
   })());
 });
