@@ -7,7 +7,9 @@ import { PageSource } from './pagesource.js';
 /* ------------------------------------------------------------------ state */
 const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings' };
 const defaults = {
-  layout:'single', dir:'rtl', gap:10, bright:100,
+  // على الشاشات الصغيرة نبدأ بصفحة واحدة لأنها أعرض وأسهل قراءة
+  layout: (window.matchMedia('(max-width: 700px)').matches) ? 'single' : 'spread',
+  dir:'rtl', gap:10, bright:100,
   mode:'image', keys:true, theme:'dark', audio:true,
   reciter:'Husary_128kbps'
 };
@@ -208,6 +210,7 @@ async function boot(){
 
   const saved = loadLS(LS.pos, null);
   const start = saved && saved.i > 0 && saved.i < S.pages.length ? saved.i : 0;
+  updateSwipeHint();
   await goTo(start, { replace:true });
 
   el.loader.hidden = true;
@@ -233,8 +236,11 @@ function fitScale(){
   const idxs = spreadIndices();
   const vp = el.viewport.getBoundingClientRect();
   if (!vp.width || !vp.height) return 400;
+  // على الجوال نستخدم الهامش كاملًا لتكبير الصفحة
+  const narrow = vp.width < 700;
+  const margin = narrow ? 4 : 18;
   const w = idxs.length === 2 ? (2 + S.cfg.gap/488.976) : 1;
-  return Math.max(80, Math.min((vp.width - 18)/w, (vp.height - 18)/PAGE_AR));
+  return Math.max(80, Math.min((vp.width - margin)/w, (vp.height - margin)/PAGE_AR));
 }
 
 function makeHold(){
@@ -617,7 +623,10 @@ function bindEvents(){
   $('btnCloseSettings').addEventListener('click', ()=>closeSheet(el.settingsSheet));
 
   $('setLayout').addEventListener('change', e=>{ S.cfg.layout=e.target.value; saveLS(LS.cfg,S.cfg); layout(true); });
-  $('setDir').addEventListener('change', e=>{ S.cfg.dir=e.target.value; saveLS(LS.cfg,S.cfg); layout(true); });
+  $('setDir').addEventListener('change', e=>{
+    S.cfg.dir=e.target.value; saveLS(LS.cfg,S.cfg);
+    updateSwipeHint(); layout(true);
+  });
   $('setGap').addEventListener('input', e=>{ S.cfg.gap=+e.target.value; saveLS(LS.cfg,S.cfg); layout(true); });
   $('setBright').addEventListener('input', e=>{
     S.cfg.bright=+e.target.value; saveLS(LS.cfg,S.cfg);
@@ -665,6 +674,10 @@ function bindEvents(){
 function jumpToInput(){
   const n = parseInt(el.pageInput.value, 10);
   if (Number.isFinite(n)) goTo(clamp(n-1, 0, S.pages.length-1));
+}
+function updateSwipeHint(){
+  const el2 = $('swipeHint'); if (!el2) return;
+  el2.textContent = S.cfg.dir === 'rtl' ? 'اسحب يمينًا للتالي' : 'اسحب يسارًا للتالي';
 }
 function syncSettingsUI(){
   $('setLayout').value = S.cfg.layout;

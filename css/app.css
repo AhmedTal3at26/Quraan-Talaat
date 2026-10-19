@@ -181,6 +181,10 @@ button{font-family:inherit;color:inherit}
 .pagebox input[type=number]{-moz-appearance:textfield}
 .linkish{background:none;border:0;color:var(--accent);cursor:pointer;font-size:13px;padding:4px}
 .linkish:hover{text-decoration:underline}
+.swipe-hint{display:none;font-size:11px;color:var(--fg-dim)}
+@media (pointer:coarse){
+  .swipe-hint{display:inline}
+}
 
 /* ---------- strip ---------- */
 .strip{
@@ -325,9 +329,28 @@ mark{background:rgba(216,162,74,.32);color:inherit;border-radius:3px;padding:0 1
   .title{font-size:15px}
   .icon-btn{width:36px;height:36px;flex:0 0 36px}
   .icon-btn svg{width:19px;height:19px}
-  .pagebox input{width:56px}
-  .strip{height:56px}
-  .thumb{height:44px}
+  .pagebox input{width:52px}
+  .pagebox{gap:5px}
+  .pagebox input{font-size:13px;padding:6px 4px}
+  .linkish{font-size:12px;padding:2px}
+  .nav-btn{width:46px;height:46px;flex:0 0 46px}
+  .bottombar{gap:6px;padding:0 6px env(safe-area-inset-bottom)}
+  .strip{height:52px}
+  .strip-track{inset:4px 4px}
+  .thumb{height:42px}
+  .thumb .tag{font-size:8px;line-height:10px}
+  .drawer{width:100vw}
+  .sheet{height:min(84%,520px)}
+  .list button{padding:9px 8px}
+  .lbl .n{font-size:15px}
+  .audiobar{left:4px;right:4px;bottom:4px;padding:4px 6px;gap:6px}
+  .audiobar select{max-width:34vw;font-size:11px;padding:5px 4px}
+  .audio-title{font-size:14px;line-height:1.5}
+}
+/* شاشات أطول: نقصّر شريط المصغّرات تلقائيًا */
+@media (max-height:640px){
+  .strip{height:44px}
+  .thumb{height:36px}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms!important;transition-duration:.01ms!important}
