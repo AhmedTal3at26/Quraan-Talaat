@@ -5,14 +5,15 @@ import { QuranData, toArabicDigits } from './data.js';
 import { PageSource } from './pagesource.js';
 
 /* ------------------------------------------------------------------ state */
-const BUILD = 'qt-v6';
-const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings', swiped:'qt.swiped' };
+const BUILD = 'qt-v7';
+const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings',
+             swiped:'qt.swiped', swipeFixed:'qt.swipeFixed' };
 const defaults = {
   // على الشاشات الصغيرة نبدأ بصفحة واحدة لأنها أعرض وأسهل قراءة
   layout: (window.matchMedia('(max-width: 700px)').matches) ? 'single' : 'spread',
   dir:'rtl', gap:10, bright:100,
-  // اتجاه السحب: 'left' = السحب لليسار ينقل للتالي (المتعارف عليه عربيًا)
-  swipe:'left',
+  // اتجاه السحب: 'right' = السحب لليمين ينقل للتالي، 'left' = العكس
+  swipe:'right',
   mode:'image', keys:true, theme:'dark', audio:true,
   reciter:'Husary_128kbps'
 };
@@ -201,6 +202,13 @@ function nearestMedallion(pg, nx, ny){
 /* ================================================================ BOOT */
 async function boot(){
   S.cfg = { ...defaults, ...loadLS(LS.cfg, {}) };
+  // ترحيل لمرة واحدة: اعتماد الاتجاه الجديد للسحب (لليمين = التالي)،
+  // فيُصحَّح أي قيمة قديمة محفوظة. بعد أول تشغيل يبقى الاختيار اليدوي كما هو.
+  if (!loadLS(LS.swipeFixed, false)){
+    S.cfg.swipe = defaults.swipe;
+    saveLS(LS.cfg, S.cfg);
+    saveLS(LS.swipeFixed, true);
+  }
   S.marks = loadLS(LS.marks, []);
   applyTheme(S.cfg.theme);
 
@@ -362,9 +370,8 @@ function endPointer(e){
     if (dist < 6 && dt < 450 && S.zoom <= 1.05){
       onPageTap(e);                                   // نقرة على زخرفة آية
     } else if (S.zoom <= 1.05 && dist > 42 && Math.abs(dx) > Math.abs(dy) * 1.4){
-      // السحب لليسار = التالي (المتعارف عليه في القارئات العربية)،
-      // ويمكن عكسه من الإعدادات ← اتجاه السحب
-      const leftIsNext = (S.cfg.swipe || 'left') === 'left';
+      // الافتراضي: السحب لليمين = الصفحة التالية (كقلب صفحات الكتاب الورقي)
+      const leftIsNext = (S.cfg.swipe || defaults.swipe) === 'left';
       const forward = leftIsNext ? (dx < 0) : (dx > 0);
       hideSwipeHint();
       goTo(forward ? S.cur + 1 : S.cur - 1);
@@ -698,7 +705,7 @@ function jumpToInput(){
 }
 function updateSwipeHint(){
   const el2 = $('swipeHint'); if (!el2) return;
-  const leftIsNext = (S.cfg.swipe || 'left') === 'left';
+  const leftIsNext = (S.cfg.swipe || defaults.swipe) === 'left';
   el2.textContent = leftIsNext ? 'اسحب لليسار: التالي' : 'اسحب لليمين: التالي';
   // يظهر مرة واحدة فقط، ويختفي بعد أول سحب حقيقي
   if (loadLS(LS.swiped, false)) el2.hidden = true;
@@ -710,7 +717,7 @@ function hideSwipeHint(){
 function syncSettingsUI(){
   $('setLayout').value = S.cfg.layout;
   $('setDir').value = S.cfg.dir;
-  const sw = $('setSwipe'); if (sw) sw.value = S.cfg.swipe || 'left';
+  const sw = $('setSwipe'); if (sw) sw.value = S.cfg.swipe || defaults.swipe;
   $('setGap').value = S.cfg.gap;
   $('setBright').value = S.cfg.bright;
   $('setMode').value = S.cfg.mode;
