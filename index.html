@@ -33,6 +33,9 @@
       <button class="icon-btn" id="btnBookmark" aria-label="حفظ الموضع" aria-pressed="false">
         <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
       </button>
+      <button class="icon-btn" id="btnAudio" aria-label="الاستماع لتلاوة الصفحة">
+        <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
+      </button>
       <button class="icon-btn" id="btnTheme" aria-label="الوضع الليلي">
         <svg viewBox="0 0 24 24" class="ico-moon"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
         <svg viewBox="0 0 24 24" class="ico-sun"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
@@ -187,9 +190,14 @@
         <input type="checkbox" id="setKeys" checked>
       </label>
       <label class="row">
-        <span>الاستماع للآية (يتطلب إنترنت)</span>
+        <span>الاستماع لتلاوة الآية</span>
         <input type="checkbox" id="setAudio">
       </label>
+      <label class="row">
+        <span>القارئ</span>
+        <select id="setReciter2"></select>
+      </label>
+      <p class="hint">شغّل التلاوة بالنقر على أي <b>زخرفة رقم الآية</b> في الصفحة، أو بزر السماعة في الأعلى. تحتاج الإنترنت.</p>
       <div class="row row-btns">
         <button class="btn" id="btnInstall" hidden>تثبيت التطبيق</button>
         <button class="btn btn-ghost" id="btnReset">مسح مواضع القراءة</button>

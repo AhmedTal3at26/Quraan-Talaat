@@ -1,5 +1,5 @@
 /* Service worker: caches the app shell + data, and caches mushaf PDFs on demand. */
-const VERSION = 'qt-v2';
+const VERSION = 'qt-v3';
 const SHELL = [
   './',
   './index.html',

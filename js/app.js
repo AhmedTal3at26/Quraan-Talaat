@@ -8,7 +8,7 @@ import { PageSource } from './pagesource.js';
 const LS = { pos:'qt.position', marks:'qt.bookmarks', cfg:'qt.settings' };
 const defaults = {
   layout:'single', dir:'rtl', gap:10, bright:100,
-  mode:'image', keys:true, theme:'dark',
+  mode:'image', keys:true, theme:'dark', audio:true,
   reciter:'Husary_128kbps'
 };
 
@@ -67,12 +67,27 @@ function initAudio(){
     o.value = id; o.textContent = name;
     return o;
   }));
+  // نسخة ثانية داخل الإعدادات
+  const sel2 = $('setReciter2');
+  if (sel2){
+    sel2.replaceChildren(...RECITERS.map(([id, name])=>{
+      const o = document.createElement('option');
+      o.value = id; o.textContent = name;
+      return o;
+    }));
+    sel2.addEventListener('change', ()=>{
+      S.cfg.reciter = sel2.value; saveLS(LS.cfg, S.cfg);
+      sel.value = sel2.value;
+      if (A.cur) playAyah(A.cur.s, A.cur.a, A.cur.offset);
+    });
+  }
   // حماية: تجاهل اختيار قديم لم يعد في القائمة
   if (!RECITERS.some(([id]) => id === S.cfg.reciter)){
     S.cfg.reciter = defaults.reciter;
     saveLS(LS.cfg, S.cfg);
   }
   sel.value = S.cfg.reciter;
+  if (sel2) sel2.value = S.cfg.reciter;
   sel.addEventListener('change', ()=>{
     S.cfg.reciter = sel.value; saveLS(LS.cfg, S.cfg);
     if (A.cur) playAyah(A.cur.s, A.cur.a, A.cur.offset);
@@ -87,6 +102,7 @@ function initAudio(){
 function setPlayIcon(playing){
   A.playing = playing;
   $('btnPlayPause').classList.toggle('is-playing', playing);
+  $('btnAudio').classList.toggle('is-playing', playing);
 }
 function playAyah(s, a, offset){
   const n = (x, w) => String(x).padStart(w, '0');
@@ -99,6 +115,14 @@ function playAyah(s, a, offset){
   el.audioBar.hidden = false;
   if (offset != null) flashAyah(S.data.locate(s, a).page, offset);
 }
+/** تشغيل تلاوة أول آية في الصفحة الحالية (زر السماعة) */
+function playPageAudio(){
+  const pg = S.pages[S.cur];
+  if (!pg) return;
+  const sa = S.data.fromGlobal(pg.g);
+  playAyah(sa.s, sa.a, 0);
+}
+
 /** أقرب زخرفة لنقطة (نسبة من الصفحة) */
 function nearestMedallion(pg, nx, ny){
   if (!pg?.meds?.length) return -1;
@@ -503,6 +527,7 @@ function bindEvents(){
 
   $('btnTheme').addEventListener('click', ()=>{ S.cfg.theme = S.cfg.theme === 'dark' ? 'light' : 'dark'; applyTheme(S.cfg.theme); });
   el.btnBookmark.addEventListener('click', toggleMark);
+  $('btnAudio').addEventListener('click', playPageAudio);
 
   $('btnSearch').addEventListener('click', ()=>{ openSheet(el.searchSheet); setTimeout(()=>el.searchInput.focus(), 220); });
   $('btnCloseSearch').addEventListener('click', ()=>closeSheet(el.searchSheet));
@@ -532,6 +557,11 @@ function bindEvents(){
     await layout(true);
   });
   $('setKeys').addEventListener('change', e=>{ S.cfg.keys=e.target.checked; saveLS(LS.cfg,S.cfg); });
+  $('setAudio').addEventListener('change', e=>{
+    S.cfg.audio = e.target.checked; saveLS(LS.cfg, S.cfg);
+    $('btnAudio').hidden = !e.target.checked;
+  });
+  $('btnAudio').hidden = !S.cfg.audio;
   $('btnReset').addEventListener('click', ()=>{
     localStorage.removeItem(LS.pos); localStorage.removeItem(LS.marks);
     S.marks = []; buildMarks(); updateBookmarkBtn();
@@ -569,7 +599,9 @@ function syncSettingsUI(){
   $('setBright').value = S.cfg.bright;
   $('setMode').value = S.cfg.mode;
   $('setKeys').checked = S.cfg.keys;
+  $('setAudio').checked = S.cfg.audio;
   $('setReciter').value = S.cfg.reciter;
+  const r2 = $('setReciter2'); if (r2) r2.value = S.cfg.reciter;
 }
 
 /* ====================================================================== PWA */

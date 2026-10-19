@@ -75,6 +75,8 @@ button{font-family:inherit;color:inherit}
 .icon-btn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .icon-btn[aria-pressed="true"]{color:var(--accent)}
 .icon-btn[aria-pressed="true"] svg{fill:currentColor}
+#btnAudio.is-playing{color:var(--accent);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 
 .ico-sun{display:none}
 [data-theme="dark"] .ico-sun{display:block}
