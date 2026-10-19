@@ -13,11 +13,11 @@ const defaults = {
 };
 
 const RECITERS = [
-  ['Husary_128kbps', 'محمود خليل الحصري'],
-  ['Minshawy_Murattal_192kbps', 'محمد صديق المنشاوي (مرتّل)'],
+  ['Husary_128kbps', 'محمود خليل الحصري (مرتّل)'],
+  ['Husary_128kbps_Mujawwad', 'محمود خليل الحصري (مجوّد)'],
+  ['Minshawy_Murattal_128kbps', 'محمد صديق المنشاوي (مرتّل)'],
   ['Abdul_Basit_Murattal_192kbps', 'عبد الباسط عبد الصمد (مرتّل)'],
-  ['Sudais_128kbps', 'عبد الرحمن السديس'],
-  ['Shatri_128kbps', 'أبو بكر الشاطري'],
+  ['Abdurrahmaan_As-Sudais_192kbps', 'عبد الرحمن السديس'],
   ['Menshawi_16kbps', 'المنشاوي (مجوّل)']
 ];
 
@@ -53,11 +53,16 @@ function closeDrawer(){ el.drawer.classList.remove('is-open'); el.drawer.setAttr
 const esc = t => String(t).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
 /* ================================================================== AUDIO */
-const A = { el:null, cur:null, playing:false };
+const A = { el:null, cur:null, playing:false, queue:[], continuePages:true };
 function initAudio(){
   A.el = new Audio();
   A.el.preload = 'none';
-  A.el.addEventListener('ended', ()=> setPlayIcon(false));
+  A.el.addEventListener('ended', ()=> nextInQueue());
+  A.el.addEventListener('error', ()=>{
+    const t = A.el.error?.message || 'تعذّر تشغيل الصوت';
+    el.audioSub.textContent = t + ' — جرّب قارئًا آخر';
+    setPlayIcon(false);
+  });
   A.el.addEventListener('pause', ()=> setPlayIcon(false));
   A.el.addEventListener('play',  ()=> setPlayIcon(true));
 
@@ -78,7 +83,7 @@ function initAudio(){
     sel2.addEventListener('change', ()=>{
       S.cfg.reciter = sel2.value; saveLS(LS.cfg, S.cfg);
       sel.value = sel2.value;
-      if (A.cur) playAyah(A.cur.s, A.cur.a, A.cur.offset);
+      if (A.cur) playAyah(A.cur.s, A.cur.a, A.cur.offset, A.queue);
     });
   }
   // حماية: تجاهل اختيار قديم لم يعد في القائمة
@@ -90,37 +95,72 @@ function initAudio(){
   if (sel2) sel2.value = S.cfg.reciter;
   sel.addEventListener('change', ()=>{
     S.cfg.reciter = sel.value; saveLS(LS.cfg, S.cfg);
-    if (A.cur) playAyah(A.cur.s, A.cur.a, A.cur.offset);
+    if (sel2) sel2.value = sel.value;
+    if (A.cur) playAyah(A.cur.s, A.cur.a, A.cur.offset, A.queue);
   });
 
   $('btnPlayPause').addEventListener('click', ()=>{
     if (!A.el.src) return;
     if (A.el.paused) A.el.play().catch(()=>{}); else A.el.pause();
   });
-  $('btnAudioClose').addEventListener('click', ()=>{ A.el.pause(); el.audioBar.hidden = true; });
+  $('btnAudioClose').addEventListener('click', ()=>{ A.el.pause(); A.queue = []; A.continuePages = false; $('btnContinue').setAttribute('aria-pressed','false'); el.audioBar.hidden = true; });
+  $('btnContinue').addEventListener('click', ()=>{
+    A.continuePages = !A.continuePages;
+    $('btnContinue').setAttribute('aria-pressed', A.continuePages ? 'true':'false');
+  });
 }
 function setPlayIcon(playing){
   A.playing = playing;
   $('btnPlayPause').classList.toggle('is-playing', playing);
   $('btnAudio').classList.toggle('is-playing', playing);
 }
-function playAyah(s, a, offset){
+function playAyah(s, a, offset, queue){
   const n = (x, w) => String(x).padStart(w, '0');
+  A.queue = queue || [];
   A.el.src = `https://everyayah.com/data/${S.cfg.reciter}/${n(s,3)}${n(a,3)}.mp3`;
   A.el.play().catch(()=>{});
   A.cur = { s, a, offset };
-  const sa = S.data.fromGlobal(S.data.global(s, a));
   el.audioTitle.textContent = S.data.verse(s, a).replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g,'');
   el.audioSub.textContent = `سورة ${S.data.surahName(s)} · الآية ${toArabicDigits(a)}`;
   el.audioBar.hidden = false;
-  if (offset != null) flashAyah(S.data.locate(s, a).page, offset);
+  if (offset != null){
+    const loc = S.data.locate(s, a);
+    if (loc) flashAyah(loc.page, loc.offset);
+  }
 }
-/** تشغيل تلاوة أول آية في الصفحة الحالية (زر السماعة) */
+
+/** تشغيل الآية التالية في قائمة الانتظار، ثم ينتقل للصفحة التالية تلقائيًا */
+function nextInQueue(){
+  const nxt = A.queue.shift();
+  if (nxt){ playAyah(nxt.s, nxt.a, nxt.offset); return; }
+  if (!A.continuePages) { setPlayIcon(false); return; }
+  const next = S.cur + 1;
+  if (next >= S.pages.length){ setPlayIcon(false); return; }
+  goTo(next, { silent:true }).then(()=>{
+    const pg = S.pages[next];
+    if (!pg) { setPlayIcon(false); return; }
+    const sa = S.data.fromGlobal(pg.g);
+    playAyah(sa.s, sa.a, pg.meds?.length ? 0 : null, []);
+  });
+}
+
+/** تشغيل متتابع لآيات الصفحة الحالية من أولها إلى آخرها */
 function playPageAudio(){
   const pg = S.pages[S.cur];
   if (!pg) return;
-  const sa = S.data.fromGlobal(pg.g);
-  playAyah(sa.s, sa.a, 0);
+  const queue = [];
+  for (let k = 0; k < pg.n; k++){
+    const sa = S.data.fromGlobal(pg.g + k);
+    queue.push({ s: sa.s, a: sa.a, offset: pg.meds?.length ? k : null });
+  }
+  if (!queue.length) return;
+  const first = queue.shift();
+  playAyah(first.s, first.a, first.offset, queue);
+}
+
+/** تشغيل آية واحدة فقط (نقر على زخرفة) — بلا متابعة تلقائية */
+function playSingle(s, a, offset){
+  playAyah(s, a, offset, []);
 }
 
 /** أقرب زخرفة لنقطة (نسبة من الصفحة) */
@@ -225,7 +265,6 @@ async function renderHold(i, force){
     hold.wrap.style.width = S.scale + 'px';
     hold.wrap.style.height = (S.scale * PAGE_AR) + 'px';
     await S.src.show(hold.host, pg, i);
-    hold.host.style.filter = `brightness(${S.cfg.bright}%)`;
     hold.key = key;
   } catch(err){
     console.error('render', i, err);
@@ -273,7 +312,9 @@ el.viewport.addEventListener('pointermove', e=>{
     return;
   }
   if (pointers.size === 1 && S.zoom > 1.01){
-    S.tx += e.clientX - prev.x; S.ty += e.clientY - prev.y;
+    S.tx += e.clientX - prev.x;
+    S.ty += e.clientY - prev.y;
+    clampPan();
     applyTransform();
   }
 });
@@ -316,8 +357,10 @@ el.viewport.addEventListener('wheel', e=>{
 }, { passive:false });
 
 function setZoom(z, cx, cy){
-  z = clamp(z, 1, 4);
   const vp = el.viewport.getBoundingClientRect();
+  // أقصى تكبير: بحيث يبقى ارتفاع الصفحة على الأقل نصف الشاشة
+  const maxZoom = clamp((vp.height / (S.fit * PAGE_AR)) * 1.6, 1.2, 4);
+  z = clamp(z, 1, maxZoom);
   const px = cx ?? vp.width/2, py = cy ?? vp.height/2;
   const rect = el.spread.getBoundingClientRect();
   const ox = px - rect.left, oy = py - rect.top;
@@ -325,7 +368,26 @@ function setZoom(z, cx, cy){
   S.tx = (rect.left - vp.left) + ox*(1-k);
   S.ty = (rect.top - vp.top) + oy*(1-k);
   S.zoom = z;
+  clampPan();
   scheduleRerender();
+}
+
+/** منع خروج الصفحة عن حدود الشاشة */
+function clampPan(){
+  if (S.zoom <= 1.001){ S.tx = 0; S.ty = 0; return; }
+  const rect = el.spread.getBoundingClientRect();
+  const vp = el.viewport.getBoundingClientRect();
+  const dx = rect.left - vp.left, dy = rect.top - vp.top;
+  const overX = Math.max(0, rect.width - vp.width);
+  const overY = Math.max(0, rect.height - vp.height);
+  if (overX <= 0) S.tx -= dx; else {
+    if (dx > 0) S.tx -= dx;
+    if (dx + rect.width < vp.width) S.tx += (vp.width - dx - rect.width);
+  }
+  if (overY <= 0) S.ty -= dy; else {
+    if (dy > 0) S.ty -= dy;
+    if (dy + rect.height < vp.height) S.ty += (vp.height - dy - rect.height);
+  }
 }
 el.viewport.addEventListener('dblclick', e=> setZoom(S.zoom > 1.3 ? 1 : 2.2, e.clientX, e.clientY));
 
@@ -547,7 +609,7 @@ function bindEvents(){
   $('setGap').addEventListener('input', e=>{ S.cfg.gap=+e.target.value; saveLS(LS.cfg,S.cfg); layout(true); });
   $('setBright').addEventListener('input', e=>{
     S.cfg.bright=+e.target.value; saveLS(LS.cfg,S.cfg);
-    for (const [,h] of S.holds) h.host.style.filter = `brightness(${S.cfg.bright}%)`;
+    document.documentElement.style.setProperty('--user-bright', (S.cfg.bright/100).toFixed(2));
   });
   $('setMode').addEventListener('change', async e=>{
     S.cfg.mode = e.target.value; saveLS(LS.cfg,S.cfg);

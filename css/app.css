@@ -23,7 +23,17 @@
   --fg-dim:#8f8071;
   --line:rgba(222,210,192,.12);
   --panel:rgba(18,14,11,.97);
+  --page-filter:invert(1) hue-rotate(180deg) saturate(.86) contrast(.92);
 }
+
+/* صفحة المصحف صورة بيضاء؛ في الوضع الليلي نعكسها لتريح العين */
+[data-theme="dark"] .canvas-wrap{background:#e8e1d4}
+[data-theme="dark"] .canvas-wrap img,
+[data-theme="dark"] .canvas-wrap canvas{filter:var(--page-filter) brightness(var(--user-bright,1))}
+[data-theme="dark"] .thumb img{filter:var(--page-filter) brightness(var(--user-bright,1))}
+[data-theme="light"] .canvas-wrap img,
+[data-theme="light"] .canvas-wrap canvas,
+[data-theme="light"] .thumb img{filter:brightness(var(--user-bright,1))}
 
 *{box-sizing:border-box}
 
